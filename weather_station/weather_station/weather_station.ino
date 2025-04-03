@@ -2,12 +2,13 @@
 #include "OpenWeatherClient.h"
 #include <LiquidCrystal.h>
 
+// TODO Start------------------------------------------------------------------
 // WiFi設定（ご自身のSSIDとパスワードに置き換えてください）
 const char* ssid = "********";
 const char* password = "************";
 
 // OpenWeatherMap API設定
-const String latitude = "************";              // ご自身の経度に置き換えてください
+const String latitude = "************";              // ご自身の緯度に置き換えてください
 const String longitude = "************";            // ご自身の経度に置き換えてください
 const char* apiKey = "***********";  // ご自身のOpenWeather APIキーに置き換えてください
 
@@ -20,6 +21,7 @@ const int d5 = 3;
 const int d6 = 4;
 const int d7 = 5;
 
+// TODO End------------------------------------------------------------------
 
 
 
