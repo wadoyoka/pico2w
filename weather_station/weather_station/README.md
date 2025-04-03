@@ -25,5 +25,6 @@ const int d7 = 5;
 
 ```
 3. ArduinoJsonをArduinoにインストールしてください。
+
    ![ArduinoJsonインストール画像](https://raw.githubusercontent.com/wadoyoka/pico2w/refs/heads/main/weather_station/imamges/ArduinoJson.png)
 4. マイコンに書き込みましょう！
