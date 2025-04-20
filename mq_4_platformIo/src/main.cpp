@@ -26,9 +26,8 @@ AwsIotMqttClient mqttClient(
     CLIENT_ID         // クライアント ID
 );
 
-// センサーデータ（サンプル）
-float temperature = 25.0;
-float humidity = 60.0;
+// センサーデータ
+int gas_data = 0;
 
 // 接続状態
 bool connected = false;
@@ -81,9 +80,12 @@ void connectToAwsIot()
     Serial.println("AWS IoT Core に接続しました");
 
     // トピックを購読
-    Serial.print("トピックを購読します: ");
-    Serial.println(SUBSCRIBE_TOPIC);
-    mqttClient.subscribe(SUBSCRIBE_TOPIC);
+
+    // TODO SubScribeもするならここのコメントを外す↓
+    // Serial.print("トピックを購読します: ");
+    // Serial.println(SUBSCRIBE_TOPIC);
+    // mqttClient.subscribe(SUBSCRIBE_TOPIC);
+    // TODO
 
     connected = true;
   }
@@ -123,9 +125,15 @@ void connectToWiFi()
  */
 void readSensorData()
 {
-  // この例では、温度と湿度をシミュレートするために少し変動させる
-  temperature = 25.0 + random(-10, 10) / 10.0;
-  humidity = 60.0 + random(-5, 5) / 10.0;
+  gas_data = analogRead(MQ4_PIN);
+  // TODO アラートをちゃんと実装する
+  if (gas_data >= MQ4_DANGER_LINE)
+  {
+    digitalWrite(BUZZER_PIN, HIGH);
+    digitalWrite(RED_LED_PIN, HIGH);
+    delay(5000);
+  }
+  // TODO　アラートをちゃんと実装する
 }
 
 /**
@@ -139,9 +147,7 @@ void publishSensorData()
   // JSON 形式のペイロードを作成
   String payload = "{";
   payload += "\"device_id\":\"" + String(CLIENT_ID) + "\",";
-  payload += "\"temperature\":" + String(temperature, 1) + ",";
-  payload += "\"humidity\":" + String(humidity, 1) + ",";
-  payload += "\"timestamp\":" + String(millis());
+  payload += "\"gas\":" + String(gas_data, 1);
   payload += "}";
 
   // データを送信
@@ -159,6 +165,45 @@ void publishSensorData()
 }
 
 /**
+ * MQ4センサーが適正な値になっているか確認しつつ準備する関数
+ */
+void MQ4_Setup()
+{
+  Serial.println("MQ4ガスセンサーセットアップ開始");
+  digitalWrite(GREEN_LED_PIN, HIGH);
+  int isWarmedCount = 0;
+  int mq4_data = 0;
+  while (isWarmedCount < MQ4_PERMISSION_WARM_COUNT)
+  {
+    mq4_data = analogRead(MQ4_PIN);
+    Serial.println("MQ4 Setup: " + String(mq4_data));
+    if (isWarmedCount % 2 == 0)
+    {
+      digitalWrite(GREEN_LED_PIN, LOW);
+      digitalWrite(RED_LED_PIN, HIGH);
+    }
+    else
+    {
+      digitalWrite(GREEN_LED_PIN, HIGH);
+      digitalWrite(RED_LED_PIN, LOW);
+    }
+
+    if (mq4_data < MQ4_SAFE_LINE)
+    {
+      isWarmedCount++;
+    }
+    else
+    {
+      isWarmedCount = 0;
+    }
+    delay(MQ4_CHECK_WARM_COUNT_INTERVAL);
+  }
+  digitalWrite(GREEN_LED_PIN, HIGH);
+  digitalWrite(RED_LED_PIN, LOW);
+  Serial.println("MQ4ガスセンサーセットアップ完了");
+}
+
+/**
  * セットアップ関数
  * スケッチの起動時に一度だけ実行されます
  */
@@ -173,7 +218,13 @@ void setup()
   Serial.println("=====================================");
 
   // LED ピンを出力として設定
-  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(RED_LED_PIN, OUTPUT);
+  digitalWrite(GREEN_LED_PIN, LOW);
+  digitalWrite(RED_LED_PIN, LOW);
+
+  // MQ4ガスセンサーのセットアップ
+  MQ4_Setup();
 
   // WiFi に接続
   connectToWiFi();

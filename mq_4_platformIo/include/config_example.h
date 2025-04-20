@@ -47,6 +47,18 @@ const unsigned long PUBLISH_INTERVAL = 5000; // 5秒ごとに送信
 const unsigned long RECONNECT_INTERVAL = 5000; // 5秒ごとに再接続を試行
 
 //=============================================================================
+// MQ4ガスセンサー・LED・ブザーピン設定
+//=============================================================================
+const int MQ4_PIN = A0;
+const int MQ4_SAFE_LINE = 500;
+const int MQ4_DANGER_LINE = 550;
+const int MQ4_CHECK_WARM_COUNT_INTERVAL = 5000;                                  // 5秒間隔で、センサーがあったまってるか確認
+const int MQ4_PERMISSION_WARM_COUNT = 5 * 60000 / MQ4_CHECK_WARM_COUNT_INTERVAL; // 5分間確認
+const int GREEN_LED_PIN = 0;
+const int RED_LED_PIN = 1;
+const int BUZZER_PIN = 2;
+
+//=============================================================================
 // デバッグ設定
 //=============================================================================
 // デバッグモード（詳細なログ出力）
