@@ -13,6 +13,7 @@
  */
 #include <Arduino.h>
 #include <WiFi.h>
+#include <ArduinoJson.h>
 #include "AwsIotMqttClient.h"
 #include "certificates.h" // 証明書ファイル
 #include "config.h"       // 設定ファイル
@@ -34,7 +35,7 @@ bool connected = false;
 
 /**
  * メッセージ受信コールバック関数
- * AWS IoT Core からメッセージを受信したときに呼び出されます
+ * ArduinoJson を使用して JSON メッセージをパース
  */
 void messageCallback(char *topic, byte *payload, unsigned int length)
 {
@@ -43,24 +44,39 @@ void messageCallback(char *topic, byte *payload, unsigned int length)
   Serial.print(topic);
   Serial.print("]: ");
 
-  // ペイロードを文字列に変換
+  // ペイロードを文字列に変換して表示
   char message[length + 1];
   memcpy(message, payload, length);
   message[length] = '\0';
   Serial.println(message);
 
-  // メッセージの処理
-  // ここでは簡単な例として、"led:on" というメッセージを受け取ったら LED を点灯
-  if (strcmp(message, "led:on") == 0)
+  // ArduinoJson を使用して JSON メッセージをパース
+  StaticJsonDocument<256> doc;
+  DeserializationError error = deserializeJson(doc, message);
+
+  // パースエラーの確認
+  if (error)
   {
-    Serial.println("LED をオンにします");
-    digitalWrite(LED_BUILTIN, HIGH);
+    Serial.print("JSON パースエラー: ");
+    Serial.println(error.c_str());
+    return;
   }
-  // "led:off" というメッセージを受け取ったら LED を消灯
-  else if (strcmp(message, "led:off") == 0)
+
+  // コマンドの処理
+  if (doc.containsKey("command"))
   {
-    Serial.println("LED をオフにします");
-    digitalWrite(LED_BUILTIN, LOW);
+    const char *command = doc["command"];
+
+    if (strcmp(command, "led_on") == 0)
+    {
+      Serial.println("LED をオンにします");
+      digitalWrite(LED_BUILTIN, HIGH);
+    }
+    else if (strcmp(command, "led_off") == 0)
+    {
+      Serial.println("LED をオフにします");
+      digitalWrite(LED_BUILTIN, LOW);
+    }
   }
 }
 
@@ -138,23 +154,28 @@ void readSensorData()
 
 /**
  * センサーデータを JSON 形式で送信する関数
+ * ArduinoJson を使用して JSON オブジェクトを作成
  */
 void publishSensorData()
 {
   // センサーデータを読み取る
   readSensorData();
 
-  // JSON 形式のペイロードを作成
-  String payload = "{";
-  payload += "\"device_id\":\"" + String(CLIENT_ID) + "\",";
-  payload += "\"gas\":" + String(gas_data, 1);
-  payload += "}";
+  // ArduinoJson を使用して JSON オブジェクトを作成
+  StaticJsonDocument<256> doc;
+
+  doc["device_id"] = CLIENT_ID;
+  doc["gas"] = gas_data;
+
+  // JSON オブジェクトをシリアル化
+  char jsonBuffer[256];
+  serializeJson(doc, jsonBuffer);
 
   // データを送信
   Serial.print("センサーデータを送信します: ");
-  Serial.println(payload);
+  Serial.println(jsonBuffer);
 
-  if (mqttClient.publish(PUBLISH_TOPIC, payload.c_str()))
+  if (mqttClient.publish(PUBLISH_TOPIC, jsonBuffer))
   {
     Serial.println("データ送信成功");
   }
