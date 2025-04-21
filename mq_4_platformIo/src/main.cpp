@@ -33,6 +33,9 @@ int gas_data = 0;
 // 接続状態
 bool connected = false;
 
+// アラート発生時のAWSパブリッシュ
+bool isDangerSend = false;
+
 /**
  * メッセージ受信コールバック関数
  * ArduinoJson を使用して JSON メッセージをパース
@@ -122,11 +125,24 @@ void connectToWiFi()
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
+  bool isRED = false;
+
   // WiFi 接続を待機
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
     Serial.print(".");
+    isRED = !isRED;
+    if (isRED)
+    {
+      digitalWrite(RED_LED_PIN, HIGH);
+      digitalWrite(GREEN_LED_PIN, LOW);
+    }
+    else
+    {
+      digitalWrite(RED_LED_PIN, LOW);
+      digitalWrite(GREEN_LED_PIN, HIGH);
+    }
   }
 
   Serial.println();
@@ -142,14 +158,6 @@ void connectToWiFi()
 void readSensorData()
 {
   gas_data = analogRead(MQ4_PIN);
-  // TODO アラートをちゃんと実装する
-  if (gas_data >= MQ4_DANGER_LINE)
-  {
-    digitalWrite(BUZZER_PIN, HIGH);
-    digitalWrite(RED_LED_PIN, HIGH);
-    delay(5000);
-  }
-  // TODO　アラートをちゃんと実装する
 }
 
 /**
@@ -182,6 +190,39 @@ void publishSensorData()
   else
   {
     Serial.println("データ送信失敗");
+  }
+}
+
+/**
+ * センサーデータを JSON 形式で送信する関数
+ * ArduinoJson を使用して JSON オブジェクトを作成
+ */
+bool publishAleart()
+{
+  // ArduinoJson を使用して JSON オブジェクトを作成
+  StaticJsonDocument<256> doc;
+
+  doc["device_id"] = CLIENT_ID;
+  doc["gas"] = gas_data;
+  doc["Message"] = ALERT_MESSAGE;
+
+  // JSON オブジェクトをシリアル化
+  char jsonBuffer[256];
+  serializeJson(doc, jsonBuffer);
+
+  // データを送信
+  Serial.print("アラートを送信します: ");
+  Serial.println(jsonBuffer);
+
+  if (mqttClient.publish(ALERT_TOPIC, jsonBuffer))
+  {
+    Serial.println("アラート送信成功");
+    return true;
+  }
+  else
+  {
+    Serial.println("アラート送信失敗");
+    return false;
   }
 }
 
@@ -241,9 +282,10 @@ void setup()
   // LED ピンを出力として設定
   pinMode(GREEN_LED_PIN, OUTPUT);
   pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(GREEN_LED_PIN, LOW);
   digitalWrite(RED_LED_PIN, LOW);
-
+  digitalWrite(BUZZER_PIN, LOW);
   // MQ4ガスセンサーのセットアップ
   MQ4_Setup();
 
@@ -278,6 +320,33 @@ void loop()
   {
     Serial.println("AWS IoT Core 接続が切断されました。再接続します...");
     connectToAwsIot();
+  }
+
+  readSensorData();
+
+  if (gas_data >= MQ4_DANGER_LINE)
+  {
+    digitalWrite(BUZZER_PIN, HIGH);
+    digitalWrite(RED_LED_PIN, HIGH);
+
+    if (mqttClient.isConnected() && isDangerSend != true)
+    {
+      if (publishAleart())
+      {
+        isDangerSend = true;
+      }
+    }
+    else
+    {
+      Serial.println("MQTT クライアントが接続されていないため、データを送信できません");
+    }
+    delay(5000);
+    digitalWrite(BUZZER_PIN, LOW);
+    digitalWrite(RED_LED_PIN, LOW);
+  }
+  else
+  {
+    isDangerSend = false;
   }
 
   // 定期的にセンサーデータを送信

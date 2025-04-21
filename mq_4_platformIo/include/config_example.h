@@ -37,6 +37,9 @@ const char *PUBLISH_TOPIC = "device/data";
 // デバイスがコマンドを受信するトピック
 const char *SUBSCRIBE_TOPIC = "device/command";
 
+// デバイスがアラートを送信するトピック
+const char *ALERT_TOPIC = "device/alert";
+
 //=============================================================================
 // タイミング設定
 //=============================================================================
@@ -57,6 +60,7 @@ const int MQ4_PERMISSION_WARM_COUNT = 5 * 60000 / MQ4_CHECK_WARM_COUNT_INTERVAL;
 const int GREEN_LED_PIN = 0;
 const int RED_LED_PIN = 1;
 const int BUZZER_PIN = 2;
+const char *ALERT_MESSAGE = "危険値が観測されました！確認お願いします！";
 
 //=============================================================================
 // デバッグ設定
